@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Git
+.git/
+.gitignore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Lock files (users will generate their own)
+package-lock.json
+pnpm-lock.yaml
+yarn.lock

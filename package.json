@@ -2,8 +2,35 @@
   "name": "@xonder/supercall",
   "version": "1.0.0",
   "type": "module",
-  "description": "Standalone voice calling skill with persona support",
+  "description": "Clawdbot plugin for AI-powered voice calls with persona support via OpenAI Realtime API + Twilio",
   "main": "index.ts",
+  "author": "Xonder",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xonder/supercall.git"
+  },
+  "homepage": "https://github.com/xonder/supercall#readme",
+  "bugs": {
+    "url": "https://github.com/xonder/supercall/issues"
+  },
+  "keywords": [
+    "clawdbot",
+    "clawdbot-plugin",
+    "voice",
+    "phone",
+    "twilio",
+    "openai",
+    "realtime",
+    "ai-agent"
+  ],
+  "files": [
+    "index.ts",
+    "src",
+    "clawdbot.plugin.json",
+    "SKILL.md",
+    "README.md"
+  ],
   "dependencies": {
     "@sinclair/typebox": "^0.34.0",
     "ws": "^8.19.0",
