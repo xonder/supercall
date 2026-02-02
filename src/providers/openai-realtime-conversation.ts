@@ -326,15 +326,8 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
         break;
 
       case "response.function_call_arguments.done":
-        this.handleFunctionCall(event);
-        break;
-
       case "response.output_item.done":
-        // Check if this is a function call item
-        if (event.item && (event.item as any).type === "function_call") {
-          console.log("[RealtimeConversation] Function call via output_item.done");
-          this.handleFunctionCallItem(event.item as any);
-        }
+        // Handled in response.done to avoid triple-firing
         break;
 
       case "rate_limits.updated":
@@ -432,10 +425,10 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
         });
       }
 
-      // Trigger the hangup callback after a short delay to let any final audio play
+      // Trigger the hangup callback after a delay to let final audio play fully
       setTimeout(() => {
         this.onHangupRequestedCallback?.(reason);
-      }, 500);
+      }, 2000);
     } else {
       console.log(`[RealtimeConversation] Unknown function: ${functionName}`);
     }
