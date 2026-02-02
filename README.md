@@ -83,6 +83,18 @@ Or via the tool directly:
 - OpenAI API key with Realtime API access
 - ngrok account (free tier works) or other tunnel solution
 
+## Disclaimer
+
+**USE AT YOUR OWN RISK.** This software is provided "as is" without warranty of any kind. The author is not responsible for any damages, costs, or legal issues arising from use of this software.
+
+**You are solely responsible** for how you use this tool. By using this software, you agree to:
+- Comply with all applicable laws and regulations (including telemarketing, robocall, and consent laws)
+- Obtain proper consent before making automated calls
+- Not use this software for any illegal, fraudulent, harassing, or nefarious purposes
+- Comply with Twilio's Acceptable Use Policy and OpenAI's Usage Policies
+
+**This tool can make real phone calls that cost real money.** Monitor your usage and set appropriate limits in your Twilio account.
+
 ## License
 
 MIT
