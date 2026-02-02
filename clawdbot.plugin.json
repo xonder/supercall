@@ -1,0 +1,62 @@
+{
+  "id": "supercall",
+  "name": "SuperCall",
+  "description": "Standalone voice calling skill with persona support (Twilio full realtime).",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "tools": ["supercall"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": { "type": "boolean", "default": true },
+      "provider": {
+        "type": "string",
+        "enum": ["twilio", "mock"]
+      },
+      "fromNumber": { "type": "string" },
+      "toNumber": { "type": "string" },
+      "twilio": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "accountSid": { "type": "string" },
+          "authToken": { "type": "string" }
+        }
+      },
+      "streaming": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "openaiApiKey": { "type": "string" },
+          "silenceDurationMs": { "type": "number" },
+          "vadThreshold": { "type": "number" },
+          "streamPath": { "type": "string" }
+        }
+      },
+      "serve": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "port": { "type": "number" },
+          "bind": { "type": "string" },
+          "path": { "type": "string" }
+        }
+      },
+      "tunnel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "provider": { "type": "string", "enum": ["none", "ngrok", "tailscale-serve", "tailscale-funnel"] },
+          "ngrokAuthToken": { "type": "string" },
+          "ngrokDomain": { "type": "string" },
+          "allowNgrokFreeTier": { "type": "boolean" }
+        }
+      },
+      "publicUrl": { "type": "string" },
+      "skipSignatureVerification": { "type": "boolean" },
+      "maxDurationSeconds": { "type": "number" },
+      "maxConcurrentCalls": { "type": "number" }
+    }
+  }
+}

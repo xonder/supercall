@@ -1,0 +1,17 @@
+{
+  "name": "@xonder/supercall",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Standalone voice calling skill with persona support",
+  "main": "index.ts",
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.0",
+    "ws": "^8.19.0",
+    "zod": "^3.24.0"
+  },
+  "clawdbot": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
