@@ -132,6 +132,19 @@ export class VoiceCallWebhookServer {
       onDisconnect: (callId) => {
         console.log(`[supercall] Media stream disconnected: ${callId}`);
       },
+
+      onHangupRequested: (providerCallId, reason) => {
+        console.log(`[supercall] 📞 AI requested hangup: ${reason}`);
+        const call = this.manager.getCallByProviderCallId(providerCallId);
+        if (call) {
+          console.log(`[supercall] Ending call ${call.callId} (provider: ${providerCallId.slice(0, 12)}...)`);
+          this.manager.endCall(call.callId).catch((err) => {
+            console.error(`[supercall] Failed to end call: ${err.message}`);
+          });
+        } else {
+          console.warn(`[supercall] Could not find call for provider ID: ${providerCallId}`);
+        }
+      },
     };
 
     this.mediaStreamHandler = new MediaStreamHandler(streamConfig);

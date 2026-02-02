@@ -48,6 +48,8 @@ export interface RealtimeConversationSession {
   onSpeechStart(callback: () => void): void;
   /** Set callback when response is complete */
   onResponseDone(callback: () => void): void;
+  /** Set callback when AI decides to hang up (via function call) */
+  onHangupRequested(callback: (reason: string) => void): void;
   /** Update session instructions (for persona changes) */
   updateInstructions(instructions: string): void;
   /** Close the session */
@@ -108,6 +110,7 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
   private onAssistantTranscriptCallback: ((transcript: string) => void) | null = null;
   private onSpeechStartCallback: (() => void) | null = null;
   private onResponseDoneCallback: (() => void) | null = null;
+  private onHangupRequestedCallback: ((reason: string) => void) | null = null;
 
   constructor(config: RealtimeConversationConfig) {
     // Add current date to instructions so AI knows what day it is
@@ -210,10 +213,28 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
           },
         },
         instructions: this.config.instructions,
+        tools: [
+          {
+            type: "function",
+            name: "hangup",
+            description: "End the phone call. Use this when: (1) the goal has been achieved, (2) the conversation has naturally concluded, (3) the other party has said goodbye, or (4) the other party has firmly refused twice. Always say goodbye before hanging up.",
+            parameters: {
+              type: "object",
+              properties: {
+                reason: {
+                  type: "string",
+                  description: "Brief reason for ending the call (e.g., 'goal achieved', 'goodbye', 'refused')",
+                },
+              },
+              required: ["reason"],
+            },
+          },
+        ],
+        tool_choice: "auto",
       },
     };
 
-    console.log("[RealtimeConversation] Sending session update (with input transcription enabled)");
+    console.log("[RealtimeConversation] Sending session update (with hangup tool + transcription)");
     this.sendEvent(sessionUpdate);
   }
 
@@ -230,7 +251,9 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
         break;
 
       case "session.updated":
-        console.log("[RealtimeConversation] Session updated");
+        // Log the session config to verify tools were registered
+        const sessionData = event.session as { tools?: unknown[] } | undefined;
+        console.log(`[RealtimeConversation] Session updated - tools registered: ${sessionData?.tools?.length ?? 0}`);
         // Trigger initial greeting if configured
         if (this.config.initialGreeting) {
           console.log("[RealtimeConversation] Triggering initial greeting...");
@@ -289,7 +312,29 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
 
       case "response.done":
         console.log("[RealtimeConversation] Response complete");
+        // Check if response contains function calls
+        const response = event.response as { output?: Array<{ type?: string; name?: string; call_id?: string; arguments?: string }> } | undefined;
+        if (response?.output) {
+          for (const item of response.output) {
+            if (item.type === "function_call") {
+              console.log(`[RealtimeConversation] Function call in response.done: ${item.name}`);
+              this.processFunctionCall(item.name, item.call_id, item.arguments);
+            }
+          }
+        }
         this.onResponseDoneCallback?.();
+        break;
+
+      case "response.function_call_arguments.done":
+        this.handleFunctionCall(event);
+        break;
+
+      case "response.output_item.done":
+        // Check if this is a function call item
+        if (event.item && (event.item as any).type === "function_call") {
+          console.log("[RealtimeConversation] Function call via output_item.done");
+          this.handleFunctionCallItem(event.item as any);
+        }
         break;
 
       case "rate_limits.updated":
@@ -297,7 +342,8 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
         break;
 
       case "error":
-        console.error("[RealtimeConversation] Error:", event.error);
+        console.error("[RealtimeConversation] Error:", JSON.stringify(event.error, null, 2));
+        console.error("[RealtimeConversation] Full error event:", JSON.stringify(event, null, 2));
         break;
 
       default:
@@ -306,6 +352,10 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
           // Skip logging frequent delta events
         } else {
           console.log(`[RealtimeConversation] Event: ${event.type}`);
+          // Debug: log any function-related events
+          if (event.type.includes("function") || event.type.includes("tool")) {
+            console.log(`[RealtimeConversation] Function event detail:`, JSON.stringify(event, null, 2));
+          }
         }
     }
   }
@@ -313,6 +363,81 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
   private sendEvent(event: unknown): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(event));
+    }
+  }
+
+  /**
+   * Handle function call from the AI (via function_call_arguments.done event).
+   * Currently only supports the hangup function.
+   */
+  private handleFunctionCall(event: {
+    name?: string;
+    call_id?: string;
+    arguments?: string;
+    [key: string]: unknown;
+  }): void {
+    const functionName = event.name;
+    const callId = event.call_id;
+    
+    console.log(`[RealtimeConversation] Function call: ${functionName}`);
+    this.processFunctionCall(functionName, callId, event.arguments);
+  }
+
+  /**
+   * Handle function call from the AI (via output_item.done event).
+   * The item has type "function_call" with name, call_id, and arguments.
+   */
+  private handleFunctionCallItem(item: {
+    type: string;
+    name?: string;
+    call_id?: string;
+    arguments?: string;
+    [key: string]: unknown;
+  }): void {
+    const functionName = item.name;
+    const callId = item.call_id;
+    
+    console.log(`[RealtimeConversation] Function call (item): ${functionName}`);
+    this.processFunctionCall(functionName, callId, item.arguments);
+  }
+
+  /**
+   * Process a function call (shared logic).
+   */
+  private processFunctionCall(
+    functionName: string | undefined,
+    callId: string | undefined,
+    args: string | undefined
+  ): void {
+    if (functionName === "hangup") {
+      let reason = "unknown";
+      try {
+        const parsed = JSON.parse(args || "{}");
+        reason = parsed.reason || "goal achieved";
+      } catch {
+        reason = "goal achieved";
+      }
+
+      console.log(`[RealtimeConversation] AI requested hangup: ${reason}`);
+
+      // Send function result to acknowledge the call
+      if (callId) {
+        this.sendEvent({
+          type: "conversation.item.create",
+          item: {
+            type: "function_call_output",
+            call_id: callId,
+            output: JSON.stringify({ success: true, message: "Ending call..." }),
+          },
+        });
+      }
+
+      // Trigger the hangup callback after a short delay to let any final audio play
+      setTimeout(() => {
+        this.onHangupRequestedCallback?.(reason);
+      }, 500);
+    } else {
+      console.log(`[RealtimeConversation] Unknown function: ${functionName}`);
     }
   }
 
@@ -373,6 +498,10 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
 
   onResponseDone(callback: () => void): void {
     this.onResponseDoneCallback = callback;
+  }
+
+  onHangupRequested(callback: (reason: string) => void): void {
+    this.onHangupRequestedCallback = callback;
   }
 
   updateInstructions(instructions: string): void {

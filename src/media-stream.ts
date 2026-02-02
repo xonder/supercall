@@ -30,6 +30,8 @@ export interface MediaStreamConfig {
   onConnect?: (callId: string, streamSid: string) => void;
   /** Stream disconnect callback */
   onDisconnect?: (callId: string) => void;
+  /** Hangup requested callback (AI decided to end the call) */
+  onHangupRequested?: (callId: string, reason: string) => void;
 }
 
 interface StreamSession {
@@ -162,6 +164,11 @@ export class MediaStreamHandler {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ event: "clear", streamSid }));
       }
+    });
+
+    conversationSession.onHangupRequested((reason) => {
+      console.log(`[MediaStream] AI requested hangup for call ${callSid}: ${reason}`);
+      this.config.onHangupRequested?.(callSid, reason);
     });
 
     const session: StreamSession = {
