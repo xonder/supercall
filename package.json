@@ -17,6 +17,8 @@
   "keywords": [
     "clawdbot",
     "clawdbot-plugin",
+    "openclaw",
+    "openclaw-plugin",
     "voice",
     "phone",
     "twilio",
@@ -29,7 +31,8 @@
     "src",
     "clawdbot.plugin.json",
     "SKILL.md",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "dependencies": {
     "@sinclair/typebox": "^0.34.0",
@@ -37,8 +40,10 @@
     "zod": "^3.24.0"
   },
   "clawdbot": {
-    "extensions": [
-      "./index.ts"
-    ]
+    "extensions": ["./index.ts"],
+    "install": {
+      "npmSpec": "@xonder/supercall",
+      "defaultChoice": "npm"
+    }
   }
 }
