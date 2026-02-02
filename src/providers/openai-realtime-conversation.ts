@@ -200,6 +200,9 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
               threshold: this.config.vadThreshold,
               silence_duration_ms: this.config.silenceDurationMs,
             },
+            transcription: {
+              model: "whisper-1",
+            },
           },
           output: {
             format: { type: "audio/pcmu" },
@@ -210,7 +213,7 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
       },
     };
 
-    console.log("[RealtimeConversation] Sending session update");
+    console.log("[RealtimeConversation] Sending session update (with input transcription enabled)");
     this.sendEvent(sessionUpdate);
   }
 

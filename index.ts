@@ -249,7 +249,7 @@ const supercallPlugin = {
           });
         }
       },
-    }, { optional: true });
+    });
 
     // Register service
     api.registerService({
