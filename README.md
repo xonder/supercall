@@ -95,6 +95,12 @@ Or via the tool directly:
 
 **This tool can make real phone calls that cost real money.** Monitor your usage and set appropriate limits in your Twilio account.
 
+**AI Security Risks:** This software uses AI (GPT-4o) to conduct autonomous voice conversations. AI systems can behave unpredictably, hallucinate information, be manipulated through prompt injection, or say things you didn't intend. You should:
+- Never give the AI access to sensitive information it shouldn't share
+- Monitor call transcripts and outcomes
+- Understand that AI responses are not guaranteed to be accurate or appropriate
+- Not rely on this tool for critical, legal, or safety-sensitive communications
+
 ## License
 
 MIT
