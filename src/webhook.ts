@@ -36,10 +36,8 @@ export class VoiceCallWebhookServer {
     this.provider = provider;
     this.selfTestSecret = options?.selfTestSecret ?? null;
 
-    // Initialize media stream handler if streaming is enabled
-    if (config.streaming?.enabled) {
-      this.initializeMediaStreaming();
-    }
+    // Initialize media stream handler (always needed for supercall)
+    this.initializeMediaStreaming();
   }
 
   /**
