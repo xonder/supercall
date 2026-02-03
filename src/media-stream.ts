@@ -160,10 +160,11 @@ export class MediaStreamHandler {
     });
 
     conversationSession.onSpeechStart(() => {
-      // Barge-in: clear Twilio's audio buffer
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ event: "clear", streamSid }));
-      }
+      // Barge-in: Previously cleared Twilio's audio buffer here, but that was
+      // too aggressive - any detected speech (even "mm-hmm") would cut off the bot.
+      // Now we let OpenAI's interrupt_response handle it internally.
+      // The bot's buffered audio may play out briefly, but that's less jarring
+      // than cutting off on every small sound.
     });
 
     conversationSession.onHangupRequested((reason) => {

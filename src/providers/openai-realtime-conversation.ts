@@ -71,7 +71,7 @@ export class OpenAIRealtimeConversationProvider {
     }
     this.config = {
       model: "gpt-realtime",
-      voice: "alloy",
+      voice: "marin",
       temperature: 0.8,
       silenceDurationMs: 800,
       vadThreshold: 0.5,
@@ -129,7 +129,7 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
     this.config = {
       apiKey: config.apiKey,
       model: config.model ?? "gpt-realtime",
-      voice: config.voice ?? "alloy",
+      voice: config.voice ?? "marin",
       instructions: instructionsWithDate,
       initialGreeting: config.initialGreeting,
       temperature: config.temperature ?? 0.8,
@@ -203,9 +203,9 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
             format: { type: "audio/pcmu" },
             turn_detection: {
               type: "semantic_vad",
-              eagerness: "low",
+              eagerness: "medium",
               create_response: true,
-              interrupt_response: false,
+              interrupt_response: true,
             },
             transcription: {
               model: "gpt-4o-mini-transcribe",

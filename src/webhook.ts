@@ -67,7 +67,7 @@ export class VoiceCallWebhookServer {
       "You are a helpful voice assistant. Be concise and natural. Keep responses short (1-2 sentences).";
     const conversationProvider = new OpenAIRealtimeConversationProvider({
       apiKey,
-      voice: "alloy",
+      voice: "marin",
       silenceDurationMs: this.config.streaming?.silenceDurationMs,
       vadThreshold: this.config.streaming?.vadThreshold,
       instructions: defaultInstructions,
