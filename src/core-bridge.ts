@@ -81,9 +81,9 @@ function findPackageRoot(startDir: string, name: string): string | null {
   }
 }
 
-function resolveClawdbotRoot(): string {
+function resolveOpenclawRoot(): string {
   if (coreRootCache) return coreRootCache;
-  const override = process.env.CLAWDBOT_ROOT?.trim();
+  const override = process.env.OPENCLAW_ROOT?.trim();
   if (override) {
     coreRootCache = override;
     return override;
@@ -102,7 +102,7 @@ function resolveClawdbotRoot(): string {
   }
 
   for (const start of candidates) {
-    const found = findPackageRoot(start, "clawdbot");
+    const found = findPackageRoot(start, "openclaw");
     if (found) {
       coreRootCache = found;
       return found;
@@ -110,12 +110,12 @@ function resolveClawdbotRoot(): string {
   }
 
   throw new Error(
-    "Unable to resolve Clawdbot root. Set CLAWDBOT_ROOT to the package root.",
+    "Unable to resolve OpenClaw root. Set OPENCLAW_ROOT to the package root.",
   );
 }
 
 async function importCoreModule<T>(relativePath: string): Promise<T> {
-  const root = resolveClawdbotRoot();
+  const root = resolveOpenclawRoot();
   const distPath = path.join(root, "dist", relativePath);
   if (!fs.existsSync(distPath)) {
     throw new Error(

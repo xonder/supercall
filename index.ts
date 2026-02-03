@@ -1,5 +1,5 @@
 /**
- * SuperCall - Standalone Voice Calling Skill for Clawdbot
+ * SuperCall - Standalone Voice Calling Skill for OpenClaw
  * 
  * Provides persona_call and supercall tools for making voice calls
  * with custom personas and goals. Fully standalone - does not depend
@@ -86,6 +86,7 @@ const SuperCallSchema = Type.Union([
     persona: Type.String({ description: "Who you are pretending to be" }),
     goal: Type.String({ description: "What you are trying to achieve" }),
     openingLine: Type.String({ description: "First thing to say when they answer" }),
+    sessionKey: Type.String({ description: "Session key for callback notification" }),
   }),
   Type.Object({
     action: Type.Literal("get_status"),
@@ -157,15 +158,17 @@ const supercallPlugin = {
               const persona = String(params.persona || "").trim();
               const goal = String(params.goal || "").trim();
               const openingLine = String(params.openingLine || "").trim();
+              const sessionKey = String(params.sessionKey || "").trim();
 
               if (!to) throw new Error("to (phone number) required");
               if (!persona) throw new Error("persona required");
               if (!goal) throw new Error("goal required");
               if (!openingLine) throw new Error("openingLine required");
+              if (!sessionKey) throw new Error("sessionKey required");
 
               const personaPrompt = buildPersonaPrompt(persona, goal, to);
 
-              const result = await rt.manager.initiateCall(to, undefined, {
+              const result = await rt.manager.initiateCall(to, sessionKey, {
                 message: openingLine,
               });
 
@@ -196,7 +199,8 @@ const supercallPlugin = {
               const callId = String(params.callId || "").trim();
               if (!callId) throw new Error("callId required");
 
-              const call = rt.manager.getCall(callId);
+              // Try memory first, then fall back to store
+              const call = rt.manager.getCall(callId) ?? rt.manager.getCallFromStore(callId);
               if (!call) {
                 activePersonaCalls.delete(callId);
                 return json({ found: false });
@@ -209,6 +213,7 @@ const supercallPlugin = {
                 transcript: call.transcript,
                 persona: personaInfo?.persona,
                 goal: personaInfo?.goal,
+                endReason: call.endReason,
               });
             }
 
@@ -257,7 +262,82 @@ const supercallPlugin = {
       start: async () => {
         if (!cfg.enabled) return;
         try {
-          await ensureRuntime();
+          const rt = await ensureRuntime();
+          
+          // Set up call completion callback
+          rt.manager.setOnCallComplete(async (call) => {
+            const personaInfo = activePersonaCalls.get(call.callId);
+            activePersonaCalls.delete(call.callId);
+            
+            const summary = {
+              callId: call.callId,
+              state: call.state,
+              endReason: call.endReason,
+              transcript: call.transcript,
+              persona: personaInfo?.persona,
+              goal: personaInfo?.goal,
+            };
+            
+            api.logger.info(`[supercall] Call completed: ${call.callId} (${call.endReason})`);
+            api.logger.info(`[supercall] DEBUG: Checking hooks config...`);
+            
+            // Build the callback message
+            const transcriptSummary = call.transcript
+              .map(t => `${t.speaker}: ${t.text}`)
+              .join("\n");
+            
+            const eventText = `📞 Call completed (${call.endReason})\n` +
+              `Goal: ${personaInfo?.goal || "N/A"}\n` +
+              `Transcript:\n${transcriptSummary}`;
+            
+            // Use /hooks/wake to trigger an agent turn with the callback
+            const port = api.config.gateway?.port ?? 18789;
+            const hooksToken = (api.config as any).hooks?.token;
+            
+            if (hooksToken) {
+              try {
+                const response = await fetch(`http://127.0.0.1:${port}/hooks/wake`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${hooksToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    text: eventText,
+                    mode: 'now',
+                  }),
+                });
+                
+                if (response.ok) {
+                  api.logger.info(`[supercall] Triggered agent callback via /hooks/wake`);
+                } else {
+                  api.logger.warn(`[supercall] /hooks/wake returned ${response.status}`);
+                  // Fallback to system event without wake
+                  if (api.runtime?.system?.enqueueSystemEvent) {
+                    api.runtime.system.enqueueSystemEvent(eventText, {
+                      sessionKey: call.sessionKey,
+                    });
+                  }
+                }
+              } catch (err) {
+                api.logger.warn(`[supercall] /hooks/wake failed: ${err instanceof Error ? err.message : String(err)}`);
+                // Fallback to system event without wake
+                if (api.runtime?.system?.enqueueSystemEvent) {
+                  api.runtime.system.enqueueSystemEvent(eventText, {
+                    sessionKey: call.sessionKey,
+                  });
+                }
+              }
+            } else {
+              // No hooks token configured - use legacy system event (won't trigger agent turn)
+              api.logger.warn(`[supercall] hooks.token not configured - callback won't trigger agent turn`);
+              if (api.runtime?.system?.enqueueSystemEvent) {
+                api.runtime.system.enqueueSystemEvent(eventText, {
+                  sessionKey: call.sessionKey,
+                });
+              }
+            }
+          });
         } catch (err) {
           api.logger.error(
             `[supercall] Failed to start runtime: ${
@@ -285,3 +365,4 @@ const supercallPlugin = {
 };
 
 export default supercallPlugin;
+// Cache buster: 1770085367

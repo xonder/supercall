@@ -1,6 +1,6 @@
 # @xonder/supercall
 
-Clawdbot plugin for AI-powered voice calls with persona support. Uses OpenAI Realtime API for ultra-low latency (~1s) voice conversations via Twilio.
+OpenClaw plugin for AI-powered voice calls with persona support. Uses OpenAI Realtime API for ultra-low latency (~1s) voice conversations via Twilio.
 
 ## Features
 
@@ -12,22 +12,26 @@ Clawdbot plugin for AI-powered voice calls with persona support. Uses OpenAI Rea
 ## Installation
 
 ```bash
-clawdbot plugins install @xonder/supercall
+openclaw plugins install @xonder/supercall
 ```
 
 Or manually:
 
 ```bash
 npm install @xonder/supercall
-# Then add to plugins.load.paths or copy to ~/.clawdbot/extensions/
+# Then add to plugins.load.paths or copy to ~/.openclaw/extensions/
 ```
 
 ## Configuration
 
-Add to your `~/.clawdbot/clawdbot.json`:
+Add to your `~/.openclaw/openclaw.json`:
 
 ```json
 {
+  "hooks": {
+    "enabled": true,
+    "token": "your-secret-token-here"
+  },
   "plugins": {
     "entries": {
       "supercall": {
@@ -57,6 +61,16 @@ Add to your `~/.clawdbot/clawdbot.json`:
 }
 ```
 
+### Required: Hooks Configuration
+
+Supercall uses OpenClaw's webhook system to trigger agent callbacks when calls complete. You **must** configure `hooks.enabled` and `hooks.token` for callbacks to work properly.
+
+The `hooks.token` can be any random string — it's used to authenticate internal webhook requests. Generate one with:
+
+```bash
+openssl rand -hex 24
+```
+
 ## Usage
 
 The plugin registers a `supercall` tool that the agent can use:
@@ -82,6 +96,11 @@ Or via the tool directly:
 - Twilio account with a phone number
 - OpenAI API key with Realtime API access
 - ngrok account (free tier works) or other tunnel solution
+
+## Attribution
+
+This project was originally forked from the OpenClaw `voice_call` plugin:
+https://docs.clawd.bot/plugins/voice-call
 
 ## Disclaimer
 

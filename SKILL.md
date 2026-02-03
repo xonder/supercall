@@ -11,26 +11,50 @@ A standalone voice calling skill for OpenClaw with persona support. Make phone c
 
 ## Installation
 
-1. Copy this skill to your Clawdbot skills directory
-2. Configure the plugin in your clawdbot config:
+1. Copy this skill to your OpenClaw skills directory
+2. **Enable hooks** for call completion callbacks (required):
 
-```yaml
-plugins:
-  entries:
-    supercall:
-      enabled: true
-      config:
-        provider: twilio
-        fromNumber: "+15551234567"
-        twilio:
-          accountSid: "your-account-sid"
-          authToken: "your-auth-token"
-        streaming:
-          enabled: true
-          openaiApiKey: "your-openai-key"
-        tunnel:
-          provider: ngrok
+```json
+{
+  "hooks": {
+    "enabled": true,
+    "token": "your-secret-token"
+  }
+}
 ```
+
+Generate a token with: `openssl rand -hex 24`
+
+3. Configure the plugin in your openclaw config:
+
+```json
+{
+  "plugins": {
+    "entries": {
+      "supercall": {
+        "enabled": true,
+        "config": {
+          "provider": "twilio",
+          "fromNumber": "+15551234567",
+          "twilio": {
+            "accountSid": "your-account-sid",
+            "authToken": "your-auth-token"
+          },
+          "streaming": {
+            "openaiApiKey": "your-openai-key"
+          },
+          "tunnel": {
+            "provider": "ngrok",
+            "ngrokDomain": "your-domain.ngrok.app"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**Important**: The `hooks.token` is required for call completion callbacks. Without it, the agent won't be notified when calls finish.
 
 ## Tool: supercall
 

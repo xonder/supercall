@@ -39,6 +39,9 @@ export class CallManager {
   >();
   /** Max duration timers to auto-hangup calls after configured timeout */
   private maxDurationTimers = new Map<CallId, NodeJS.Timeout>();
+  
+  /** Callback for when a call completes */
+  private onCallComplete: ((call: CallRecord) => void) | null = null;
 
   constructor(
     config: VoiceCallConfig,
@@ -254,6 +257,16 @@ export class CallManager {
       this.persistCallRecord(call);
       this.clearMaxDurationTimer(callId);
       this.rejectTranscriptWaiter(callId, "Call ended: hangup-bot");
+      
+      // Notify callback before cleanup
+      if (this.onCallComplete) {
+        try {
+          this.onCallComplete(call);
+        } catch (err) {
+          console.error("[supercall] onCallComplete error:", err);
+        }
+      }
+      
       this.activeCalls.delete(callId);
       if (call.providerCallId) {
         this.providerCallIdMap.delete(call.providerCallId);
@@ -334,6 +347,17 @@ export class CallManager {
         this.transitionState(call, event.reason as CallState);
         this.clearMaxDurationTimer(call.callId);
         this.rejectTranscriptWaiter(call.callId, `Call ended: ${event.reason}`);
+        this.persistCallRecord(call);
+        
+        // Notify callback before cleanup
+        if (this.onCallComplete) {
+          try {
+            this.onCallComplete(call);
+          } catch (err) {
+            console.error("[supercall] onCallComplete error:", err);
+          }
+        }
+        
         this.activeCalls.delete(call.callId);
         if (call.providerCallId) {
           this.providerCallIdMap.delete(call.providerCallId);
@@ -387,6 +411,43 @@ export class CallManager {
    */
   getActiveCalls(): CallRecord[] {
     return Array.from(this.activeCalls.values());
+  }
+
+  /**
+   * Set callback for when a call completes.
+   */
+  setOnCallComplete(handler: ((call: CallRecord) => void) | null): void {
+    this.onCallComplete = handler;
+  }
+
+  /**
+   * Get a call from the persistent store by ID (for completed calls).
+   */
+  getCallFromStore(callId: CallId): CallRecord | undefined {
+    const logPath = path.join(this.storePath, "calls.jsonl");
+    if (!fs.existsSync(logPath)) return undefined;
+
+    try {
+      const content = fs.readFileSync(logPath, "utf-8");
+      const lines = content.split("\n");
+      let result: CallRecord | undefined;
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const call = JSON.parse(line) as CallRecord;
+          if (call.callId === callId) {
+            result = call;
+          }
+        } catch {
+          // Skip invalid lines
+        }
+      }
+
+      return result;
+    } catch {
+      return undefined;
+    }
   }
 
   /**

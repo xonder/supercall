@@ -2,7 +2,7 @@
   "name": "@xonder/supercall",
   "version": "1.0.0",
   "type": "module",
-  "description": "Clawdbot plugin for AI-powered voice calls with persona support via OpenAI Realtime API + Twilio",
+  "description": "OpenClaw plugin for AI-powered voice calls with persona support via OpenAI Realtime API + Twilio",
   "main": "index.ts",
   "author": "Xonder",
   "license": "MIT",
@@ -15,8 +15,6 @@
     "url": "https://github.com/xonder/supercall/issues"
   },
   "keywords": [
-    "clawdbot",
-    "clawdbot-plugin",
     "openclaw",
     "openclaw-plugin",
     "voice",
@@ -29,7 +27,7 @@
   "files": [
     "index.ts",
     "src",
-    "clawdbot.plugin.json",
+    "openclaw.plugin.json",
     "SKILL.md",
     "README.md",
     "LICENSE"
@@ -39,7 +37,7 @@
     "ws": "^8.19.0",
     "zod": "^3.24.0"
   },
-  "clawdbot": {
+  "openclaw": {
     "extensions": ["./index.ts"],
     "install": {
       "npmSpec": "@xonder/supercall",
