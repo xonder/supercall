@@ -112,6 +112,9 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
   private onResponseDoneCallback: (() => void) | null = null;
   private onHangupRequestedCallback: ((reason: string) => void) | null = null;
 
+  /** Accumulator for streaming transcription deltas (gpt-4o-transcribe models) */
+  private transcriptDeltas: Map<string, string> = new Map();
+
   constructor(config: RealtimeConversationConfig) {
     // Add current date to instructions so AI knows what day it is
     const currentDate = new Date().toLocaleDateString('en-US', { 
@@ -199,12 +202,13 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
           input: {
             format: { type: "audio/pcmu" },
             turn_detection: {
-              type: "server_vad",
-              threshold: this.config.vadThreshold,
-              silence_duration_ms: this.config.silenceDurationMs,
+              type: "semantic_vad",
+              eagerness: "low",
+              create_response: true,
+              interrupt_response: false,
             },
             transcription: {
-              model: "whisper-1",
+              model: "gpt-4o-mini-transcribe",
             },
           },
           output: {
@@ -299,10 +303,28 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
         }
         break;
 
+      case "conversation.item.input_audio_transcription.delta":
+        // Streaming transcription delta (gpt-4o-transcribe models)
+        if (event.delta) {
+          const itemId = (event.item_id as string) ?? "unknown";
+          const existing = this.transcriptDeltas.get(itemId) ?? "";
+          this.transcriptDeltas.set(itemId, existing + event.delta);
+        }
+        break;
+
       case "conversation.item.input_audio_transcription.completed":
         if (event.transcript) {
           console.log(`[RealtimeConversation] User said: "${event.transcript}"`);
           this.onUserTranscriptCallback?.(event.transcript as string);
+        } else {
+          // For streaming models, transcript may come only via deltas
+          const itemId = (event.item_id as string) ?? "unknown";
+          const accumulated = this.transcriptDeltas.get(itemId);
+          if (accumulated) {
+            console.log(`[RealtimeConversation] User said (from deltas): "${accumulated}"`);
+            this.onUserTranscriptCallback?.(accumulated);
+            this.transcriptDeltas.delete(itemId);
+          }
         }
         break;
 
