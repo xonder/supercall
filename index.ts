@@ -279,7 +279,6 @@ const supercallPlugin = {
             };
             
             api.logger.info(`[supercall] Call completed: ${call.callId} (${call.endReason})`);
-            api.logger.info(`[supercall] DEBUG: Checking hooks config...`);
             
             // Build the callback message
             const transcriptSummary = call.transcript
@@ -365,4 +364,3 @@ const supercallPlugin = {
 };
 
 export default supercallPlugin;
-// Cache buster: 1770085367
