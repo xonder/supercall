@@ -39,6 +39,7 @@ interface StreamSession {
   streamSid: string;
   ws: WebSocket;
   conversationSession: RealtimeConversationSession;
+  pendingHangup?: { reason: string; resolve: () => void };
 }
 
 /**
@@ -102,6 +103,17 @@ export class MediaStreamHandler {
               session = null;
             }
             break;
+
+          case "mark":
+            // Twilio sends mark back when audio playback completes
+            console.log(`[MediaStream] Mark received: ${JSON.stringify(message.mark)} for session ${session?.callId || 'unknown'}`);
+            if (session?.pendingHangup && message.mark?.name === "hangup") {
+              console.log(`[MediaStream] ✅ Hangup mark matched! Audio finished for ${session.callId}`);
+              session.pendingHangup.resolve();
+            } else if (session?.pendingHangup) {
+              console.log(`[MediaStream] Mark name mismatch: expected 'hangup', got '${message.mark?.name}'`);
+            }
+            break;
         }
       } catch (error) {
         console.error("[MediaStream] Error processing message:", error);
@@ -138,6 +150,14 @@ export class MediaStreamHandler {
       initialGreeting,
     });
 
+    // Create session object BEFORE setting up callbacks that reference it
+    const session: StreamSession = {
+      callId: callSid,
+      streamSid,
+      ws,
+      conversationSession,
+    };
+
     // Stream audio output back to Twilio
     conversationSession.onAudioOutput((audio) => {
       if (ws.readyState === WebSocket.OPEN) {
@@ -169,15 +189,37 @@ export class MediaStreamHandler {
 
     conversationSession.onHangupRequested((reason) => {
       console.log(`[MediaStream] AI requested hangup for call ${callSid}: ${reason}`);
-      this.config.onHangupRequested?.(callSid, reason);
+      console.log(`[MediaStream] Sending hangup mark, will wait for Twilio to confirm playback complete`);
+      
+      // Send mark to Twilio, wait for it to come back (audio finished), then hangup
+      const done = new Promise<void>(resolve => {
+        session.pendingHangup = { reason, resolve };
+      });
+      
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          event: "mark",
+          streamSid,
+          mark: { name: "hangup" }
+        }));
+        console.log(`[MediaStream] Mark sent to Twilio for stream ${streamSid}`);
+      } else {
+        console.log(`[MediaStream] WebSocket not open, skipping mark`);
+      }
+      
+      // When mark returns (or timeout), do the hangup
+      const timeoutMs = 30000; // 30 second safety timeout for long sentences
+      Promise.race([
+        done,
+        new Promise<void>(r => setTimeout(() => {
+          console.log(`[MediaStream] ⚠️ Timeout reached (${timeoutMs}ms) - mark never received for ${callSid}`);
+          r();
+        }, timeoutMs))
+      ]).then(() => {
+        console.log(`[MediaStream] Executing hangup for ${callSid}`);
+        this.config.onHangupRequested?.(callSid, reason);
+      });
     });
-
-    const session: StreamSession = {
-      callId: callSid,
-      streamSid,
-      ws,
-      conversationSession,
-    };
 
     this.sessions.set(streamSid, session);
     this.config.onConnect?.(callSid, streamSid);

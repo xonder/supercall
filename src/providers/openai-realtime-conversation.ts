@@ -447,10 +447,9 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
         });
       }
 
-      // Trigger the hangup callback after a delay to let final audio play fully
-      setTimeout(() => {
-        this.onHangupRequestedCallback?.(reason);
-      }, 2000);
+      // Trigger hangup immediately - MediaStreamHandler uses Twilio marks
+      // to wait for audio playback to finish before actually ending the call
+      this.onHangupRequestedCallback?.(reason);
     } else {
       console.log(`[RealtimeConversation] Unknown function: ${functionName}`);
     }
