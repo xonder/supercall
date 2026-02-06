@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.0] - 2026-02-05
+
+### Fixed
+- **Hangup timing** - Calls no longer cut off mid-sentence when AI decides to hang up. Now uses Twilio mark events to wait for audio playback to complete before disconnecting.
+- **Safety timeout** - Added 30-second fallback timeout in case Twilio mark event is never received.
+
 ## [1.1.0] - 2026-02-02
 
 ### Added
