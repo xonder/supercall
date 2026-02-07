@@ -1,6 +1,29 @@
+---
+name: supercall
+description: Make AI-powered phone calls with custom personas and goals. Uses OpenAI Realtime API + Twilio for ultra-low latency voice conversations. Use when you need to call someone, confirm appointments, deliver messages, or have the AI handle phone conversations autonomously. Unlike the standard voice_call plugin, the person on the call doesn't have access to gateway agent, reducing attack surfaces.
+homepage: https://github.com/xonder/supercall
+metadata:
+  {
+    "openclaw":
+      {
+        "emoji": "📞",
+        "requires": { "plugins": ["supercall"] },
+        "install":
+          [
+            {
+              "id": "npm",
+              "kind": "plugin",
+              "package": "@xonder/supercall",
+              "label": "Install supercall plugin (npm)",
+            },
+          ],
+      },
+  }
+---
+
 # SuperCall
 
-A standalone voice calling skill for OpenClaw with persona support. Make phone calls with custom personas and goals using Twilio (full realtime).
+Make AI-powered phone calls with custom personas and goals using OpenAI Realtime API + Twilio.
 
 ## Features
 
@@ -8,6 +31,7 @@ A standalone voice calling skill for OpenClaw with persona support. Make phone c
 - **Full Realtime Mode**: GPT-4o powered voice conversations with <~1s latency
 - **Provider**: Supports Twilio (full realtime) and mock provider for testing
 - **Streaming Audio**: Bidirectional audio via WebSocket for real-time conversations
+- **Limited Access**: Unlike the standard voice_call plugin, the person on the call doesn't have access to gateway agent, reducing attack surfaces.
 
 ## Installation
 
