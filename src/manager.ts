@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
+import WebSocket from "ws";
+
 import { resolveUserPath } from "./utils.js";
 import type { VoiceCallConfig } from "./config.js";
 import type { VoiceCallProvider } from "./providers/base.js";
@@ -206,6 +208,7 @@ export class CallManager {
       throw new Error("Webhook self-test secret not initialized");
     }
 
+    // Test 1: HTTP POST to webhook endpoint
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4000);
     try {
@@ -220,11 +223,65 @@ export class CallManager {
       if (!response.ok) {
         throw new Error(`Webhook self-test failed (HTTP ${response.status})`);
       }
-      this.lastPreflightOk = true;
-      this.lastPreflightAt = now;
     } finally {
       clearTimeout(timeout);
     }
+
+    // Test 2: WebSocket endpoint (critical for media streaming)
+    const streamPath = this.config.streaming?.streamPath || "/voice/stream";
+    const wsProtocol = url.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${wsProtocol}//${url.host}${streamPath}`;
+    
+    await this.testWebSocketEndpoint(wsUrl);
+
+    this.lastPreflightOk = true;
+    this.lastPreflightAt = now;
+  }
+
+  /**
+   * Test that the WebSocket endpoint is reachable.
+   * Opens a connection and immediately closes it.
+   */
+  private testWebSocketEndpoint(wsUrl: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const timeoutMs = 4000;
+      let resolved = false;
+
+      const timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          ws.close();
+          reject(new Error(`WebSocket self-test timeout (${wsUrl})`));
+        }
+      }, timeoutMs);
+
+      const ws = new WebSocket(wsUrl);
+
+      ws.on("open", () => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timer);
+          ws.close();
+          resolve();
+        }
+      });
+
+      ws.on("error", (err) => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timer);
+          reject(new Error(`WebSocket self-test failed (${wsUrl}): ${err.message}`));
+        }
+      });
+
+      ws.on("unexpected-response", (_req, res) => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timer);
+          reject(new Error(`WebSocket upgrade rejected (${wsUrl}): HTTP ${res.statusCode}`));
+        }
+      });
+    });
   }
 
   /**

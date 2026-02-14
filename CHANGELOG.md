@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.2.1] - 2026-02-14
+
+### Fixed
+- **Pre-flight WebSocket check** - Now tests both HTTP webhook AND WebSocket media stream endpoint before placing calls. Previously, calls could be initiated even if the WebSocket path was unreachable (e.g., ngrok tunnel misconfigured), resulting in silent calls with empty transcripts.
+
 ## [1.2.0] - 2026-02-05
 
 ### Fixed

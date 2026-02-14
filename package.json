@@ -1,6 +1,6 @@
 {
   "name": "@xonder/supercall",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "description": "OpenClaw plugin for AI-powered voice calls with persona support via OpenAI Realtime API + Twilio",
   "main": "index.ts",
