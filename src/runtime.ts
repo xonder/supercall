@@ -41,9 +41,7 @@ function resolveProvider(config: VoiceCallConfig): VoiceCallProvider {
           authToken: config.twilio?.authToken ?? process.env.TWILIO_AUTH_TOKEN,
         },
         {
-          allowNgrokFreeTier: config.tunnel?.allowNgrokFreeTier ?? true,
           publicUrl: config.publicUrl,
-          skipVerification: config.skipSignatureVerification,
           streamPath: config.streaming?.streamPath,
         },
       );

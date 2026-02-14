@@ -139,15 +139,16 @@ export interface TwilioVerificationResult {
   reason?: string;
   /** The URL that was used for verification (for debugging) */
   verificationUrl?: string;
-  /** Whether we're running behind ngrok free tier */
-  isNgrokFreeTier?: boolean;
 }
 
 /**
  * Verify Twilio webhook with full context and detailed result.
  *
- * Handles the special case of ngrok free tier where signature validation
- * may fail due to URL discrepancies (ngrok adds interstitial page handling).
+ * For ngrok free tier, URL reconstruction may differ from what Twilio signed
+ * due to interstitial pages and URL modifications. When signature validation
+ * fails on free-tier ngrok domains (.ngrok-free.app, .ngrok.io), we log a
+ * warning but allow the request through. Paid/custom ngrok domains (.ngrok.app)
+ * have stable URLs and are verified strictly.
  */
 export function verifyTwilioWebhook(
   ctx: WebhookContext,
@@ -155,17 +156,8 @@ export function verifyTwilioWebhook(
   options?: {
     /** Override the public URL (e.g., from config) */
     publicUrl?: string;
-    /** Allow ngrok free tier compatibility mode (less secure) */
-    allowNgrokFreeTier?: boolean;
-    /** Skip verification entirely (only for development) */
-    skipVerification?: boolean;
   },
 ): TwilioVerificationResult {
-  // Allow skipping verification for development/testing
-  if (options?.skipVerification) {
-    return { ok: true, reason: "verification skipped (dev mode)" };
-  }
-
   const signature = getHeader(ctx.headers, "x-twilio-signature");
 
   if (!signature) {
@@ -190,20 +182,21 @@ export function verifyTwilioWebhook(
     return { ok: true, verificationUrl };
   }
 
-  // Check if this is ngrok free tier - the URL might have different format
+  // ngrok free-tier URLs may have reconstruction issues (interstitial pages,
+  // URL modifications) that cause legitimate signature mismatches. Paid/custom
+  // ngrok domains (.ngrok.app) are stable and should pass normal verification.
   const isNgrokFreeTier =
     verificationUrl.includes(".ngrok-free.app") ||
     verificationUrl.includes(".ngrok.io");
 
-  if (isNgrokFreeTier && options?.allowNgrokFreeTier) {
+  if (isNgrokFreeTier) {
     console.warn(
-      "[persona-voice-call] Twilio signature validation failed (proceeding for ngrok free tier compatibility)",
+      "[supercall] Twilio signature mismatch on ngrok free-tier URL (URL reconstruction may differ)",
     );
     return {
       ok: true,
-      reason: "ngrok free tier compatibility mode",
+      reason: "ngrok free-tier URL reconstruction variance",
       verificationUrl,
-      isNgrokFreeTier: true,
     };
   }
 
@@ -211,6 +204,5 @@ export function verifyTwilioWebhook(
     ok: false,
     reason: `Invalid signature for URL: ${verificationUrl}`,
     verificationUrl,
-    isNgrokFreeTier,
   };
 }

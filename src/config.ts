@@ -91,18 +91,11 @@ export const VoiceCallTunnelConfigSchema = z
       .default("none"),
     /** ngrok auth token (optional, enables longer sessions and more features) */
     ngrokAuthToken: z.string().min(1).optional(),
-    /** ngrok custom domain (paid feature, e.g., "myapp.ngrok.io") */
+    /** ngrok custom domain (optional, e.g., "myapp.ngrok.app") */
     ngrokDomain: z.string().min(1).optional(),
-    /**
-     * Allow ngrok free tier compatibility mode.
-     * When true, signature verification failures on ngrok-free.app URLs
-     * will be logged but allowed through. Less secure, but necessary
-     * for ngrok free tier which may modify URLs.
-     */
-    allowNgrokFreeTier: z.boolean().default(true),
   })
   .strict()
-  .default({ provider: "none", allowNgrokFreeTier: true });
+  .default({ provider: "none" });
 export type VoiceCallTunnelConfig = z.infer<typeof VoiceCallTunnelConfigSchema>;
 
 // -----------------------------------------------------------------------------
@@ -178,9 +171,6 @@ export const VoiceCallConfigSchema = z
 
     /** Public webhook URL override (if set, bypasses tunnel auto-detection) */
     publicUrl: z.string().url().optional(),
-
-    /** Skip webhook signature verification (development only, NOT for production) */
-    skipSignatureVerification: z.boolean().default(false),
 
     /** Store path for call logs */
     store: z.string().optional(),

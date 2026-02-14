@@ -655,6 +655,12 @@ export class CallManager {
     });
   }
 
+  /**
+   * Maximum age (in ms) for a non-terminal call to be considered active.
+   * Calls older than this are assumed stale (e.g., from a crashed process).
+   */
+  private static readonly STALE_CALL_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+
   private loadActiveCalls(): void {
     const logPath = path.join(this.storePath, "calls.jsonl");
     if (!fs.existsSync(logPath)) return;
@@ -674,16 +680,41 @@ export class CallManager {
       }
     }
 
+    const now = Date.now();
+    let staleCount = 0;
+
     for (const [callId, call] of callMap) {
-      if (!TerminalStates.has(call.state)) {
-        this.activeCalls.set(callId, call);
-        if (call.providerCallId) {
-          this.providerCallIdMap.set(call.providerCallId, callId);
-        }
-        for (const eventId of call.processedEventIds) {
-          this.processedEventIds.add(eventId);
-        }
+      if (TerminalStates.has(call.state)) {
+        continue; // Already terminal, skip
       }
+
+      // Check if call is stale (started too long ago without reaching terminal state)
+      const callAge = now - (call.startedAt || 0);
+      if (callAge > CallManager.STALE_CALL_THRESHOLD_MS) {
+        staleCount++;
+        const prevState = call.state;
+        // Mark as stale and persist the terminal state
+        call.state = "error";
+        call.endedAt = now;
+        this.persistCallRecord(call);
+        console.log(
+          `[supercall] Cleaned up stale call ${callId.slice(0, 8)}... (age: ${Math.round(callAge / 1000)}s, was: ${prevState})`,
+        );
+        continue;
+      }
+
+      // Call is recent and non-terminal, consider it active
+      this.activeCalls.set(callId, call);
+      if (call.providerCallId) {
+        this.providerCallIdMap.set(call.providerCallId, callId);
+      }
+      for (const eventId of call.processedEventIds) {
+        this.processedEventIds.add(eventId);
+      }
+    }
+
+    if (staleCount > 0) {
+      console.log(`[supercall] Cleaned up ${staleCount} stale call(s) on startup`);
     }
   }
 

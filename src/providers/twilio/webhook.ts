@@ -10,9 +10,7 @@ export function verifyTwilioProviderWebhook(params: {
   options: TwilioProviderOptions;
 }): WebhookVerificationResult {
   const result = verifyTwilioWebhook(params.ctx, params.authToken, {
-    publicUrl: params.currentPublicUrl || undefined,
-    allowNgrokFreeTier: params.options.allowNgrokFreeTier ?? true,
-    skipVerification: params.options.skipVerification,
+    publicUrl: params.currentPublicUrl || params.options.publicUrl || undefined,
   });
 
   if (!result.ok) {

@@ -50,12 +50,10 @@
         "properties": {
           "provider": { "type": "string", "enum": ["none", "ngrok", "tailscale-serve", "tailscale-funnel"], "default": "ngrok" },
           "ngrokAuthToken": { "type": "string" },
-          "ngrokDomain": { "type": "string" },
-          "allowNgrokFreeTier": { "type": "boolean", "default": true }
+          "ngrokDomain": { "type": "string" }
         }
       },
       "publicUrl": { "type": "string" },
-      "skipSignatureVerification": { "type": "boolean" },
       "maxDurationSeconds": { "type": "number", "default": 300 },
       "maxConcurrentCalls": { "type": "number", "default": 5 }
     }

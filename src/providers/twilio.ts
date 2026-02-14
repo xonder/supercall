@@ -25,14 +25,10 @@ import { verifyTwilioProviderWebhook } from "./twilio/webhook.js";
  * @see https://www.twilio.com/docs/voice/media-streams
  */
 export interface TwilioProviderOptions {
-  /** Allow ngrok free tier compatibility mode (less secure) */
-  allowNgrokFreeTier?: boolean;
   /** Override public URL for signature verification */
   publicUrl?: string;
   /** Path for media stream WebSocket (e.g., /voice/stream) */
   streamPath?: string;
-  /** Skip webhook signature verification (development only) */
-  skipVerification?: boolean;
 }
 
 export class TwilioProvider implements VoiceCallProvider {
