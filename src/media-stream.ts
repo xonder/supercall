@@ -14,6 +14,7 @@ import type {
   OpenAIRealtimeConversationProvider,
   RealtimeConversationSession,
 } from "./providers/openai-realtime-conversation.js";
+import { generateDtmfAudio, chunkDtmfAudio } from "./dtmf.js";
 
 export interface MediaStreamConfig {
   /** Conversation provider for realtime speech-to-speech */
@@ -40,6 +41,7 @@ interface StreamSession {
   ws: WebSocket;
   conversationSession: RealtimeConversationSession;
   pendingHangup?: { reason: string; resolve: () => void };
+  pendingDtmf?: { digits: string; resolve: () => void };
 }
 
 /**
@@ -110,6 +112,9 @@ export class MediaStreamHandler {
             if (session?.pendingHangup && message.mark?.name === "hangup") {
               console.log(`[MediaStream] ✅ Hangup mark matched! Audio finished for ${session.callId}`);
               session.pendingHangup.resolve();
+            } else if (session?.pendingDtmf && message.mark?.name === "dtmf") {
+              console.log(`[MediaStream] ✅ DTMF mark matched! Audio finished for ${session.callId}`);
+              session.pendingDtmf.resolve();
             } else if (session?.pendingHangup) {
               console.log(`[MediaStream] Mark name mismatch: expected 'hangup', got '${message.mark?.name}'`);
             }
@@ -225,6 +230,56 @@ export class MediaStreamHandler {
       ]).then(() => {
         console.log(`[MediaStream] Executing hangup for ${callSid}`);
         this.config.onHangupRequested?.(callSid, reason);
+      });
+    });
+
+    conversationSession.onDtmfRequested((digits) => {
+      console.log(`[MediaStream] DTMF "${digits}" requested for call ${callSid}`);
+
+      if (ws.readyState !== WebSocket.OPEN) {
+        console.log(`[MediaStream] WebSocket not open, cannot send DTMF`);
+        return;
+      }
+
+      // Send a mark first, wait for AI audio to finish, then inject tones
+      const done = new Promise<void>(resolve => {
+        session.pendingDtmf = { digits, resolve };
+      });
+
+      ws.send(JSON.stringify({
+        event: "mark",
+        streamSid,
+        mark: { name: "dtmf" }
+      }));
+      console.log(`[MediaStream] Sent DTMF mark, waiting for audio to finish`);
+
+      let dtmfResolved = false;
+      Promise.race([
+        done,
+        new Promise<void>(r => setTimeout(() => {
+          if (!dtmfResolved) {
+            console.log(`[MediaStream] ⚠️ DTMF mark timeout for ${callSid}, sending tones anyway`);
+            r();
+          }
+        }, 5000))
+      ]).then(() => {
+        if (dtmfResolved) return;
+        dtmfResolved = true;
+        session.pendingDtmf = undefined;
+        console.log(`[MediaStream] Injecting DTMF tones "${digits}" into stream ${streamSid}`);
+
+        const dtmfAudio = generateDtmfAudio(digits);
+        const chunks = chunkDtmfAudio(dtmfAudio);
+
+        for (const chunk of chunks) {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+              event: "media",
+              streamSid,
+              media: { payload: chunk.toString("base64") },
+            }));
+          }
+        }
       });
     });
 

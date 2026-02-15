@@ -315,6 +315,8 @@ export class TwilioProvider implements VoiceCallProvider {
       Url: url.toString(), // TwiML serving endpoint
       StatusCallback: statusUrl.toString(), // Separate status callback endpoint
       StatusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+      Record: "true",
+      RecordingChannels: "dual",
       Timeout: "30",
     };
 

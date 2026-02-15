@@ -50,6 +50,8 @@ export interface RealtimeConversationSession {
   onResponseDone(callback: () => void): void;
   /** Set callback when AI decides to hang up (via function call) */
   onHangupRequested(callback: (reason: string) => void): void;
+  /** Set callback when AI wants to send DTMF tones (for IVR navigation) */
+  onDtmfRequested(callback: (digits: string) => void): void;
   /** Update session instructions (for persona changes) */
   updateInstructions(instructions: string): void;
   /** Close the session */
@@ -111,6 +113,7 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
   private onSpeechStartCallback: (() => void) | null = null;
   private onResponseDoneCallback: (() => void) | null = null;
   private onHangupRequestedCallback: ((reason: string) => void) | null = null;
+  private onDtmfRequestedCallback: ((digits: string) => void) | null = null;
 
   /** Accumulator for streaming transcription deltas (gpt-4o-transcribe models) */
   private transcriptDeltas: Map<string, string> = new Map();
@@ -124,7 +127,32 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
       day: 'numeric' 
     });
     const baseInstructions = config.instructions ?? "You are a helpful voice assistant. Be concise.";
-    const instructionsWithDate = `Today is ${currentDate}.\n\n${baseInstructions}`;
+
+    const ivrGuidance = `
+
+## CRITICAL: Phone Menu (IVR) Navigation
+
+You have a tool called send_dtmf. It is THE ONLY WAY to press buttons on a phone. Saying a number out loud does NOT press it — the phone system cannot hear your voice as a button press.
+
+When you hear a phone menu (e.g. "press 1 for X, press 2 for Y"):
+1. Decide which option matches your goal
+2. Call send_dtmf with the digits immediately
+3. Do NOT just listen. Do NOT just narrate. CALL THE FUNCTION.
+
+Examples:
+- You hear "For English, press 1" → call send_dtmf("1")
+- You hear "For store hours, press 3" → call send_dtmf("3")  
+- You hear "Enter your account number followed by pound" → call send_dtmf("1234567890#")
+- You need to wait between groups → call send_dtmf("1w123#")
+
+Rules:
+- Act FAST. Phone menus have short timeouts. Call send_dtmf as soon as you know the right option.
+- If a menu repeats, you missed your window. Call send_dtmf immediately on the second pass.
+- If the system says "invalid option", listen for the menu again and retry with send_dtmf.
+- If placed on hold with music, wait silently.
+- When transferred to a human, resume normal conversation.`;
+
+    const instructionsWithDate = `Today is ${currentDate}.\n\n${ivrGuidance}\n\n${baseInstructions}`;
     
     this.config = {
       apiKey: config.apiKey,
@@ -203,7 +231,7 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
             format: { type: "audio/pcmu" },
             turn_detection: {
               type: "semantic_vad",
-              eagerness: "medium",
+              eagerness: "high",
               create_response: true,
               interrupt_response: true,
             },
@@ -233,12 +261,27 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
               required: ["reason"],
             },
           },
+          {
+            type: "function",
+            name: "send_dtmf",
+            description: "Press a button on the phone keypad. You MUST call this function to interact with automated phone menus. When you hear 'press 1 for X', call send_dtmf with digits='1'. Speaking the number out loud does NOT press it — only this function does. Call it immediately when you know which option to pick.",
+            parameters: {
+              type: "object",
+              properties: {
+                digits: {
+                  type: "string",
+                  description: "Digits to send (e.g. '1', '2', '411', '1234567890#')",
+                },
+              },
+              required: ["digits"],
+            },
+          },
         ],
         tool_choice: "auto",
       },
     };
 
-    console.log("[RealtimeConversation] Sending session update (with hangup tool + transcription)");
+    console.log("[RealtimeConversation] Sending session update (with hangup + send_dtmf tools + transcription)");
     this.sendEvent(sessionUpdate);
   }
 
@@ -415,6 +458,30 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
       // Trigger hangup immediately - MediaStreamHandler uses Twilio marks
       // to wait for audio playback to finish before actually ending the call
       this.onHangupRequestedCallback?.(reason);
+    } else if (functionName === "send_dtmf") {
+      let digits = "";
+      try {
+        const parsed = JSON.parse(args || "{}");
+        digits = parsed.digits || "";
+      } catch {
+        digits = "";
+      }
+
+      console.log(`[RealtimeConversation] AI sending DTMF: ${digits}`);
+
+      // Acknowledge the function call so AI continues listening
+      if (callId) {
+        this.sendEvent({
+          type: "conversation.item.create",
+          item: {
+            type: "function_call_output",
+            call_id: callId,
+            output: JSON.stringify({ success: true, digits_sent: digits }),
+          },
+        });
+      }
+
+      this.onDtmfRequestedCallback?.(digits);
     } else {
       console.log(`[RealtimeConversation] Unknown function: ${functionName}`);
     }
@@ -481,6 +548,10 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
 
   onHangupRequested(callback: (reason: string) => void): void {
     this.onHangupRequestedCallback = callback;
+  }
+
+  onDtmfRequested(callback: (digits: string) => void): void {
+    this.onDtmfRequestedCallback = callback;
   }
 
   updateInstructions(instructions: string): void {
