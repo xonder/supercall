@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 
-import type { CoreConfig } from "./core-bridge.js";
 import type { VoiceCallConfig } from "./config.js";
+import type { CoreConfig } from "./types.js";
 import { validateProviderConfig } from "./config.js";
 import { CallManager } from "./manager.js";
 import type { VoiceCallProvider } from "./providers/base.js";

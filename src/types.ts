@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+// -----------------------------------------------------------------------------
+// Core Config (minimal type for host config passthrough)
+// -----------------------------------------------------------------------------
+
+export type CoreConfig = {
+  session?: {
+    store?: string;
+  };
+  [key: string]: unknown;
+};
 
 // -----------------------------------------------------------------------------
 // Provider Identifiers
