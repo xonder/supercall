@@ -6,6 +6,7 @@ OpenClaw plugin for AI-powered voice calls with persona support. Uses OpenAI Rea
 
 - **AI Persona Calls**: Define a persona + goal, let GPT-4o handle the conversation
 - **Full Realtime**: OpenAI Realtime API with bidirectional audio streaming
+- **DTMF / IVR Navigation**: AI can navigate automated phone menus by sending touch-tone digits through the audio stream — no external dependencies, pure µ-law tone generation
 - **Auto Hangup**: AI can terminate calls when goals are achieved
 - **Ngrok Tunneling**: Built-in ngrok support for webhook URLs
 

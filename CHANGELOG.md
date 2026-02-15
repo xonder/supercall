@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.0] - 2026-02-15
+
+### Added
+- **DTMF / IVR navigation** - AI can now navigate automated phone menus (IVR systems) by sending touch-tone digits through the audio stream. When the AI hears "press 1 for ...", it uses the `send_dtmf` tool to press buttons on the keypad — speaking a number out loud does not work, so this is essential for interacting with phone trees.
+- **Pure µ-law DTMF tone generation** - No external dependencies; DTMF tones are generated as ITU-standard dual-frequency pairs, encoded to µ-law (8kHz mono), and injected directly into the Twilio media stream.
+- **Wait character support** - Use `w` in digit strings (e.g., `1w123#`) to insert 500ms pauses between tone groups, useful for multi-stage IVR inputs.
+- **Playback-aware injection** - DTMF tones wait for current AI audio playback to finish (via Twilio mark events) before injecting, preventing tone corruption. Includes a 5-second safety timeout.
+
 ## [1.3.0] - 2026-02-14
 
 ### Changed

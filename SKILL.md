@@ -1,6 +1,6 @@
 ---
 name: supercall
-description: Make AI-powered phone calls with custom personas and goals. Uses OpenAI Realtime API + Twilio for ultra-low latency voice conversations. Use when you need to call someone, confirm appointments, deliver messages, or have the AI handle phone conversations autonomously. Unlike the standard voice_call plugin, the person on the call doesn't have access to gateway agent, reducing attack surfaces.
+description: Make AI-powered phone calls with custom personas and goals. Uses OpenAI Realtime API + Twilio for ultra-low latency voice conversations. Supports DTMF/IVR navigation — the AI can navigate automated phone menus by sending touch-tone digits. Use when you need to call someone, confirm appointments, deliver messages, navigate phone trees, or have the AI handle phone conversations autonomously. Unlike the standard voice_call plugin, the person on the call doesn't have access to gateway agent, reducing attack surfaces.
 homepage: https://github.com/xonder/supercall
 metadata:
   {
@@ -34,6 +34,7 @@ Make AI-powered phone calls with custom personas and goals using OpenAI Realtime
 
 - **Persona Calls**: Define a persona, goal, and opening line for autonomous calls
 - **Full Realtime Mode**: GPT-4o powered voice conversations with <~1s latency
+- **DTMF / IVR Navigation**: AI automatically navigates automated phone menus (press 1 for X, enter your account number, etc.) by generating and injecting touch-tone digits into the audio stream
 - **Provider**: Supports Twilio (full realtime) and mock provider for testing
 - **Streaming Audio**: Bidirectional audio via WebSocket for real-time conversations
 - **Limited Access**: Unlike the standard voice_call plugin, the person on the call doesn't have access to gateway agent, reducing attack surfaces.
@@ -126,6 +127,16 @@ supercall(
 - `get_status` - Check call status and transcript
 - `end_call` - End an active call
 - `list_calls` - List active persona calls
+
+### DTMF / IVR Navigation
+
+The AI automatically handles automated phone menus (IVR systems) during calls. When it hears prompts like "press 1 for sales", it uses an internal `send_dtmf` tool to send touch-tone digits through the audio stream. This is fully automatic — no extra configuration or agent intervention is needed.
+
+- **Supported characters**: `0-9`, `*`, `#`, `A-D`, `w` (500ms pause)
+- **Example sequences**: `1` (press 1), `1234567890#` (enter account number + pound), `1w123#` (press 1, wait, then enter 123#)
+- **How it works**: DTMF tones are generated as ITU-standard dual-frequency pairs, encoded to µ-law (8kHz mono), and injected directly into the Twilio media stream. No external dependencies.
+
+This means persona calls can navigate phone trees end-to-end — e.g., "call the pharmacy, navigate through their menu, and check on my prescription status."
 
 ## Configuration Options
 

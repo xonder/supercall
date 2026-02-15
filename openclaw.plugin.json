@@ -2,7 +2,7 @@
   "id": "supercall",
   "name": "SuperCall",
   "description": "AI-powered voice calls with persona support via OpenAI Realtime API + Twilio",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "main": "index.ts",
   "tools": ["supercall"],
   "configSchema": {
