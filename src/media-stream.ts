@@ -188,6 +188,13 @@ export class MediaStreamHandler {
     });
 
     conversationSession.onHangupRequested((reason) => {
+      // Guard against duplicate hangup requests (OpenAI Realtime API
+      // can fire multiple hangup function calls in a single response.done)
+      if (session.pendingHangup) {
+        console.log(`[MediaStream] Ignoring duplicate hangup request for ${callSid}`);
+        return;
+      }
+
       console.log(`[MediaStream] AI requested hangup for call ${callSid}: ${reason}`);
       console.log(`[MediaStream] Sending hangup mark, will wait for Twilio to confirm playback complete`);
       
@@ -242,25 +249,6 @@ export class MediaStreamHandler {
     this.sessions.delete(session.streamSid);
   }
 
-  /**
-   * Get active session by call ID.
-   */
-  getSessionByCallId(callId: string): StreamSession | undefined {
-    return [...this.sessions.values()].find(
-      (session) => session.callId === callId,
-    );
-  }
-
-  /**
-   * Close all sessions.
-   */
-  closeAll(): void {
-    for (const session of this.sessions.values()) {
-      session.conversationSession.close();
-      session.ws.close();
-    }
-    this.sessions.clear();
-  }
 }
 
 /**

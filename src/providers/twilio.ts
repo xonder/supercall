@@ -65,10 +65,6 @@ export class TwilioProvider implements VoiceCallProvider {
     this.currentPublicUrl = url;
   }
 
-  getPublicUrl(): string | null {
-    return this.currentPublicUrl;
-  }
-
   /**
    * Make an authenticated request to the Twilio API.
    */

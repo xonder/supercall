@@ -581,20 +581,6 @@ export class CallManager {
     waiter.resolve(transcript);
   }
 
-  private waitForFinalTranscript(callId: CallId): Promise<string> {
-    this.rejectTranscriptWaiter(callId, "Transcript waiter replaced");
-
-    const timeoutMs = this.config.transcriptTimeoutMs;
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.transcriptWaiters.delete(callId);
-        reject(new Error(`Timed out waiting for transcript after ${timeoutMs}ms`));
-      }, timeoutMs);
-
-      this.transcriptWaiters.set(callId, { resolve, reject, timeout });
-    });
-  }
-
   private static readonly ConversationStates = new Set<CallState>([
     "speaking",
     "listening",

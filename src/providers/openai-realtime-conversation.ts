@@ -382,41 +382,6 @@ class OpenAIRealtimeConversationSession implements RealtimeConversationSession {
   }
 
   /**
-   * Handle function call from the AI (via function_call_arguments.done event).
-   * Currently only supports the hangup function.
-   */
-  private handleFunctionCall(event: {
-    name?: string;
-    call_id?: string;
-    arguments?: string;
-    [key: string]: unknown;
-  }): void {
-    const functionName = event.name;
-    const callId = event.call_id;
-    
-    console.log(`[RealtimeConversation] Function call: ${functionName}`);
-    this.processFunctionCall(functionName, callId, event.arguments);
-  }
-
-  /**
-   * Handle function call from the AI (via output_item.done event).
-   * The item has type "function_call" with name, call_id, and arguments.
-   */
-  private handleFunctionCallItem(item: {
-    type: string;
-    name?: string;
-    call_id?: string;
-    arguments?: string;
-    [key: string]: unknown;
-  }): void {
-    const functionName = item.name;
-    const callId = item.call_id;
-    
-    console.log(`[RealtimeConversation] Function call (item): ${functionName}`);
-    this.processFunctionCall(functionName, callId, item.arguments);
-  }
-
-  /**
    * Process a function call (shared logic).
    */
   private processFunctionCall(
