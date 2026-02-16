@@ -51,6 +51,7 @@ export class MediaStreamHandler {
   private wss: WebSocketServer | null = null;
   private sessions = new Map<string, StreamSession>();
   private config: MediaStreamConfig;
+  private wsCounter = 0;
 
   constructor(config: MediaStreamConfig) {
     this.config = config;
@@ -77,6 +78,8 @@ export class MediaStreamHandler {
     ws: WebSocket,
     _request: IncomingMessage,
   ): Promise<void> {
+    const wsId = ++this.wsCounter;
+    console.log(`[MediaStream] New WebSocket connection #${wsId}`);
     let session: StreamSession | null = null;
 
     ws.on("message", async (data: Buffer) => {
@@ -85,7 +88,7 @@ export class MediaStreamHandler {
 
         switch (message.event) {
           case "connected":
-            console.log("[MediaStream] Twilio connected");
+            console.log(`[MediaStream] Twilio connected (ws #${wsId})`);
             break;
 
           case "start":
@@ -100,6 +103,7 @@ export class MediaStreamHandler {
             break;
 
           case "stop":
+            console.log(`[MediaStream] Stop event on ws #${wsId} (hasSession: ${!!session})`);
             if (session) {
               this.handleStop(session);
               session = null;
@@ -125,9 +129,11 @@ export class MediaStreamHandler {
       }
     });
 
-    ws.on("close", () => {
+    ws.on("close", (code, reason) => {
+      console.log(`[MediaStream] WebSocket close event (code: ${code}, reason: ${reason?.toString() || 'none'}, hasSession: ${!!session})`);
       if (session) {
         this.handleStop(session);
+        session = null;
       }
     });
 
@@ -142,9 +148,20 @@ export class MediaStreamHandler {
   private async handleStart(
     ws: WebSocket,
     message: TwilioMediaMessage,
-  ): Promise<StreamSession> {
+  ): Promise<StreamSession | null> {
     const streamSid = message.streamSid || "";
     const callSid = message.start?.callSid || "";
+
+    // Guard against duplicate Twilio WebSocket connections for the same call.
+    // Twilio sometimes sends two WS upgrades; the second would create a
+    // competing OpenAI session and both end up dying.
+    for (const existing of this.sessions.values()) {
+      if (existing.callId === callSid) {
+        console.log(`[MediaStream] Ignoring duplicate stream ${streamSid} for call ${callSid} (already have ${existing.streamSid})`);
+        ws.close();
+        return null;
+      }
+    }
 
     console.log(`[MediaStream] Stream started: ${streamSid} (call: ${callSid})`);
 
